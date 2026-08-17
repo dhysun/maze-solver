@@ -131,3 +131,40 @@ class MazeEnv(gym.Env):
         delta_col = (self.goal[1] - agent_col) / max(w, 1)
 
         return np.concatenate([window.flatten(), [delta_row, delta_col]]).astype(np.float32)
+    
+    def step(self, action):
+        self.steps += 1
+
+        # get moves for action
+        delta_row, delta_col = self._moves[int(action)]
+        agent_row, agent_col = self.pos
+
+        # find agents new pos
+        new_row = agent_row + delta_row
+        new_col = agent_col + delta_col
+
+        h, w = self.maze.shape
+
+        reward = -0.01
+        done = False
+        stopped = False
+
+        # if new pos is valid pos and isn't a wall, then update the pos
+        if (0 <= new_row < h and 0 <= new_col < w
+                and self.maze[new_row, new_col] == 0):
+            self.pos = (new_row, new_col)
+        else:
+            # if new pos is out of bounds or is a wall, then penalize
+            # and don't update pos
+            reward -= 0.5
+        
+        # if goal is reached, add 10 to the reward and set done to true
+        if self.pos == self.goal:
+            reward += 10.0
+            done = True
+
+        # if max steps is reached, set stopped to true
+        if self.steps >= self.max_steps:
+            stopped = True
+        
+        return self.get_observation(), reward, done, stopped, {}
