@@ -114,22 +114,6 @@ class MazeEnv(gym.Env):
 
         return cells_w, cells_h
 
-    def reset(self, *, seed = None, options = None):
-        super().reset(seed = seed)
-        
-        # get random size for maze
-        cells_w = self._rng.randint(self.min_cells, self.max_cells)
-        cells_h = self._rng.randint(self.min_cells, self.max_cells)
-        
-        # create the maze
-        self.maze = create_maze(cells_w, cells_h, self._rng)
-
-        h, w = self.maze.shape
-        self.pos = (1, 1) # top left cell
-        self.goal = (h - 2, w - 2) # bottom-right cell
-        self.steps = 0
-        return np.zeros(self.observation_space.shape, dtype=np.float32), {}
-
     def get_observation(self):
         r = self.view_radius
         agent_row, agent_col = self.pos
@@ -152,6 +136,30 @@ class MazeEnv(gym.Env):
 
         return np.concatenate([window.flatten(), [delta_row, delta_col]]).astype(np.float32)
     
+    def reset(self, *, seed = None, options = None):
+        super().reset(seed = seed)
+        
+        # if maze provided, set maze, pos, goal to provided values
+        # if not, create new maze
+        if self._provided_maze is not None:
+            self.maze = self._provided_maze.copy()
+            self.pos = self._provided_start
+            self.goal = self._provided_goal
+        else:
+            # get random dimensions
+            cells_w, cells_h = self.sample_dimensions()
+        
+            # create the maze
+            self.maze = create_maze(cells_w, cells_h, self._rng)
+
+            h, w = self.maze.shape
+            self.pos = (1, 1) # top left cell
+            self.goal = (h - 2, w - 2) # bottom-right cell
+
+        self.steps = 0
+        
+        return self.get_observation(), {}
+
     def step(self, action):
         self.steps += 1
 
