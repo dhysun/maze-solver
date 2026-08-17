@@ -29,6 +29,8 @@ from torchrl.objectives import ClipPPOLoss
 from torchrl.objectives.value import GAE
 from tqdm import tqdm
 
+import os
+
 # hyperparameters
 
 is_fork = multiprocessing.get_start_method() == "fork"
@@ -53,7 +55,15 @@ num_epochs = 10
 clip_epsilon = 0.2
 gamma = 0.99
 lmbda = 0.95
-entropy_eps = 1e-4
+entropy_eps = 2e-3
+
+view_radius = 3
+min_cells, max_cells = 3, 10
+max_steps = 400
+
+output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "training outputs")
+checkpoint_path = os.path.join(output_dir, "maze_policy.pt")
+plot_path = os.path.join(output_dir, "maze_training_curves.png")
 
 # environment
 
