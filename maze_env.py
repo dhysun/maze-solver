@@ -94,6 +94,26 @@ class MazeEnv(gym.Env):
         self._provided_start = start
         self._provided_goal = goal
 
+    def sample_dimensions(self):
+        cell_span = self.max_cells - self.min_cells
+
+        # if span is >= 3, on 35% of times, choose an elongated maze
+        if cell_span >= 3 and self._rng.random() < 0.35:
+            # create dimensions of maze
+            long_cells = self._rng.randint(self.min_cells + 3, self.max_cells)
+            short_cells = self._rng.randint(self.min_cells, self.min_cells + 2)
+
+            # randomly decide if maze is long horizontally or vertically
+            if self._rng.random() < 0.5:
+                return long_cells, short_cells
+            return short_cells, long_cells
+        
+        # otherwise, create a random maze within the possible range
+        cells_w = self._rng.randint(self.min_cells, self.max_cells)
+        cells_h = self._rng.randint(self.min_cells, self.max_cells)
+
+        return cells_w, cells_h
+
     def reset(self, *, seed = None, options = None):
         super().reset(seed = seed)
         
@@ -146,8 +166,8 @@ class MazeEnv(gym.Env):
         h, w = self.maze.shape
 
         reward = -0.01
-        done = False
-        stopped = False
+        terminated = False
+        truncated = False
 
         # if new pos is valid pos and isn't a wall, then update the pos
         if (0 <= new_row < h and 0 <= new_col < w
@@ -161,10 +181,10 @@ class MazeEnv(gym.Env):
         # if goal is reached, add 10 to the reward and set done to true
         if self.pos == self.goal:
             reward += 10.0
-            done = True
+            terminated = True
 
         # if max steps is reached, set stopped to true
         if self.steps >= self.max_steps:
-            stopped = True
+            truncated = True
         
-        return self.get_observation(), reward, done, stopped, {}
+        return self.get_observation(), reward, terminated, truncated, {}
