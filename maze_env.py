@@ -4,6 +4,57 @@ import random
 from gymnasium import spaces
 import numpy as np
 
+def create_maze(cells_width, cells_height, rng: random.Random) -> np.ndarray:
+    height, width = (2 * cell_height) + 1, (2 * cell_width) + 1
+    
+    # initialize maze as all 1's
+    maze = np.ones((height, width), dtype = np.uint8)
+
+    # initialize visited cells as all false
+    visited_cells = np.zeros((cells_height, cells_width), dtype = bool)
+
+    # converts cell coords to maze coords
+    def to_maze_coord(cell_y, cell_x):
+        return (2 * cell_y) + 1, (2 * cell_x) + 1
+    
+    stack = [(0, 0)]
+    visited_cells[0, 0] = True
+
+    maze_y, maze_x = to_maze_coord(0, 0)
+    maze[maze_y, maze_x] = 0
+
+    while stack:
+        cell_y, cell_x = stack[-1]
+        nbors = []
+
+        # append potential neighbors which are in bounds
+        for dy, dx in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            nbor_y, nbor_x = cell_y + dy, cell_x + dx
+            if (0 <= nbor_y < cells_height and 0 <= nbor_x < cells_width 
+                    and not visited_cells[nbor_y, nbor_x]):
+                nbors.append((nbor_y, nbor_x, dy, dx))
+        
+        if nbors:
+            # randomly pick one of the neighbors
+            nbor_y, nbor_x, dy, dx = rng.choice(nbors)
+
+            # convert cell to maze coordinates and set the wall between
+            # the current cell and the neighbor to a path by changing the
+            # value from 1 (representing wall) to 0 (representing path)
+            maze_y, maze_x = to_maze_coord(cell_y, cell_x)
+            maze[maze_y + dy, maze_x + dx] = 0
+
+            # do the same for the neighbor cell
+            nbor_maze_y, nbor_maze_x = to_maze_coord(nbor_y, nbor_x)
+            maze[nbor_maze_y, nbor_maze_x] = 0
+
+            visited_cells[nbor_y, nbor_x] = True
+            stack.append((nbor_y, nbor_x))
+        else:
+            stack.pop()
+    
+    return maze
+
 class MazeEnv(gym.Env):
 
     def __init__(self, min_cells = 4, max_cells = 8, view_radius = 2, 
@@ -42,5 +93,3 @@ class MazeEnv(gym.Env):
         self._provided_maze = maze
         self._provided_start = start
         self._provided_goal = goal
-
-    
