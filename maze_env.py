@@ -196,3 +196,32 @@ class MazeEnv(gym.Env):
             truncated = True
         
         return self.get_observation(), reward, terminated, truncated, {}
+
+
+def parse_ascii_maze(text: str):
+    lines = [line for line in text.splitlines() if line.strip() != ""]
+
+    h = len(lines)
+    w = max(len(line) for line in lines)
+
+    maze = np.ones((h, w), dtype = np.uint8)
+
+    start = goal = None
+
+    for y, line in enumerate(lines):
+        for x, ch in enumerate(line):
+            if ch == "#":
+                maze[y, x] = 1
+            elif ch == " ":
+                maze[y, x] = 0
+            elif ch == "S":
+                maze[y, x] = 0
+                start = (y, x)
+            elif ch == "E":
+                maze[y, x] = 0
+                goal = (y, x)
+    
+    if start is None or goal is None:
+        raise RuntimeError("Invalid maze")
+    
+    return maze, start, goal
