@@ -30,6 +30,7 @@ from torchrl.objectives.value import GAE
 from tqdm import tqdm
 
 import os
+from maze_env import MazeEnv
 
 # hyperparameters
 
@@ -67,25 +68,12 @@ plot_path = os.path.join(output_dir, "maze_training_curves.png")
 
 # environment
 
-base_env = GymEnv("InvertedDoublePendulum-v4", device = device)
+base_env = MazeEnv(min_cells = min_cells, max_cells = max_cells,
+                    view_radius = view_radius, max_steps = max_steps)
 
-env = TransformedEnv(
-    base_env,
-    Compose(
-        ObservationNorm(in_keys = ["observation"]),
-        DoubleToFloat(),
-        StepCounter(),
-    ),
-)
+gym_env = GymWrapper(base_env, device = device, categorical_action_encoding = True)
 
-env.transform[0].init_stats(num_iter = 1000, reduce_dim = 0, cat_dim = 0)
-
-print("normalization constant shape:", env.transform[0].loc.shape)
-print("observation_spec:", env.observation_spec)
-print("reward_spec:", env.reward_spec)
-print("input_spec:", env.input_spec)
-print("action_spec (as defined by input_spec):", env.action_spec)
-check_env_specs(env)
+env = TransformedEnv(gym_env, DoubleToFloat())
 
 rollout = env.rollout(3)
 print("rollout of three steps:", rollout)
