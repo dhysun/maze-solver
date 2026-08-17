@@ -109,3 +109,25 @@ class MazeEnv(gym.Env):
         self.goal = (h - 2, w - 2) # bottom-right cell
         self.steps = 0
         return np.zeros(self.observation_space.shape, dtype=np.float32), {}
+
+    def get_observation(self):
+        r = self.view_radius
+        agent_row, agent_col = self.pos
+        h, w = self.maze.shape
+
+        # create an observation window of 1's
+        window = np.ones(((2 * r) + 1, (2 * r) + 1), dtype = np.float32)
+
+        # copy maze cells into the window
+        for i in range(-r, r+1):
+            for j in range(-r, r+1):
+                maze_row, maze_col = agent_row + i, agent_col + j
+
+                if 0 <= maze_row < h and 0 <= maze_col < w:
+                    window[i + r, j + r] = float(self.maze[maze_row, maze_col])
+        
+        # find direction of goal
+        delta_row = (self.goal[0] - agent_row) / max(h, 1)
+        delta_col = (self.goal[1] - agent_col) / max(w, 1)
+
+        return np.concatenate([window.flatten(), [delta_row, delta_col]]).astype(np.float32)
