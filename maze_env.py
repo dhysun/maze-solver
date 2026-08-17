@@ -5,7 +5,7 @@ from gymnasium import spaces
 import numpy as np
 
 def create_maze(cells_width, cells_height, rng: random.Random) -> np.ndarray:
-    height, width = (2 * cell_height) + 1, (2 * cell_width) + 1
+    height, width = (2 * cells_height) + 1, (2 * cells_width) + 1
     
     # initialize maze as all 1's
     maze = np.ones((height, width), dtype = np.uint8)
@@ -89,7 +89,23 @@ class MazeEnv(gym.Env):
         self._provided_start = None
         self._provided_goal = None
     
-    def get_provided_maze(self, maze: np.ndarray, start: tuple, goal: tuple):
+    def set_provided_maze(self, maze: np.ndarray, start: tuple, goal: tuple):
         self._provided_maze = maze
         self._provided_start = start
         self._provided_goal = goal
+
+    def reset(self, *, seed = None, options = None):
+        super().reset(seed = seed)
+        
+        # get random size for maze
+        cells_w = self._rng.randint(self.min_cells, self.max_cells)
+        cells_h = self._rng.randint(self.min_cells, self.max_cells)
+        
+        # create the maze
+        self.maze = create_maze(cells_w, cells_h, self._rng)
+
+        h, w = self.maze.shape
+        self.pos = (1, 1) # top left cell
+        self.goal = (h - 2, w - 2) # bottom-right cell
+        self.steps = 0
+        return np.zeros(self.observation_space.shape, dtype=np.float32), {}
