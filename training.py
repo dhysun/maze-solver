@@ -66,6 +66,7 @@ max_steps = 400
 output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "training outputs")
 checkpoint_path = os.path.join(output_dir, "maze_policy.pt")
 plot_path = os.path.join(output_dir, "maze_training_curves.png")
+os.makedirs(output_dir, exist_ok = True)
 
 # environment
 
