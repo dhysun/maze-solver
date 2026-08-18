@@ -172,6 +172,7 @@ for i, tensordict_data in enumerate(collector):
         advantage_module(tensordict_data)
         data_view = tensordict_data.reshape(-1)
         replay_buffer.extend(data_view.cpu())
+
         for _ in range(frames_per_batch // sub_batch_size):
             subdata = replay_buffer.sample(sub_batch_size)
             loss_vals = loss_module(subdata.to(device))
@@ -191,40 +192,48 @@ for i, tensordict_data in enumerate(collector):
     cum_reward_str = (
         f"average reward = {logs['reward'][-1]: 4.4f} (init = {logs['reward'][0]: 4.4f})"
     )
-    logs["step_count"].append(tensordict_data["step_count"].max().item())
-    stepcount_str = f"step count (max): {logs['step_count'][-1]}"
     logs["lr"].append(optim.param_groups[0]["lr"])
     lr_str = f"lr policy: {logs['lr'][-1]: 4.4f}"
-    if i % 10 == 0:
+
+    frac = pbar.n / total_frames
+    if frac < 0.25:
+        base_env.min_cells, base_env.max_cells = 3, 4
+    elif frac < 0.45:
+        base_env.min_cells, base_env.max_cells = 3, 6
+    elif frac < 0.7:
+        base_env.min_cells, base_env.max_cells = 3, 8
+    else:
+        base_env.min_cells, base_env.max_cells = min_cells, max_cells
+    
+    curriculum_str = f"maze cells: {base_env.min_cells}-{base_env.max_cells}"
+
+    if i % 5 == 0:
         with set_exploration_type(ExplorationType.DETERMINISTIC), torch.no_grad():
-            eval_rollout = env.rollout(1000, policy_module)
-            logs["eval reward"].append(eval_rollout["next", "reward"].mean().item())
+            eval_rollout = env.rollout(max_steps, policy_module)
+            success = bool(eval_rollout["next", "terminated"].any().item())
             logs["eval reward (sum)"].append(
                 eval_rollout["next", "reward"].sum().item()
             )
-            logs["eval step_count"].append(eval_rollout["step_count"].max().item())
+            logs["eval success"].append(1.0 if success else 0.0)
             eval_str = (
-                f"eval cumulative reward: {logs['eval reward (sum)'][-1]: 4.4f} "
-                f"(init: {logs['eval reward (sum)'][0]: 4.4f}), "
-                f"eval step-count: {logs['eval step_count'][-1]}"
+                f"eval return: {logs['eval reward (sum)'][-1]: 4.4f} "
+                f"(solved: {success})"
             )
             del eval_rollout
-    pbar.set_description(", ".join([eval_str, cum_reward_str, stepcount_str, lr_str]))
+    pbar.set_description(", ".join([eval_str, cum_reward_str, lr_str, curriculum_str]))
     scheduler.step()
+
+torch.save(actor_net.state_dict(), checkpoint_path)
+print(f"saved policy weights to {checkpoint_path}")
 
 # results
 
-plt.figure(figsize = (10, 10))
-plt.subplot(2, 2, 1)
+plt.figure(figsize = (10, 5))
+plt.subplot(1, 2, 1)
 plt.plot(logs["reward"])
 plt.title("training rewards (average)")
-plt.subplot(2, 2, 2)
-plt.plot(logs["step_count"])
-plt.title("Max step count (training)")
-plt.subplot(2, 2, 3)
-plt.plot(logs["eval reward (sum)"])
-plt.title("Return (test)")
-plt.subplot(2, 2, 4)
-plt.plot(logs["eval step_count"])
-plt.title("Max step count (test)")
-plt.show()
+plt.subplot(1, 2, 2)
+plt.plot(logs["eval success"])
+plt.title("eval solved?")
+plt.savefig(plot_path)
+print(f"saved training curves to {plot_path}")
