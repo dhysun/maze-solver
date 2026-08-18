@@ -31,6 +31,7 @@ from tqdm import tqdm
 
 import os
 from maze_env import MazeEnv
+from torchrl.envs.libs.gym import GymWrapper
 
 # hyperparameters
 
@@ -81,38 +82,31 @@ print("Shape of the rollout TensorDict:", rollout.batch_size)
 
 # policy
 
+num_actions = env.action_spec.space.n
+
 actor_net = nn.Sequential(
     nn.LazyLinear(num_cells, device = device),
     nn.Tanh(),
     nn.LazyLinear(num_cells, device = device),
     nn.Tanh(),
-    nn.LazyLinear(num_cells, device = device),
-    nn.Tanh(),
-    nn.LazyLinear(2 * env.action_spec.shape[-1], device = device),
-    NormalParamExtractor(),
+    nn.LazyLinear(num_actions, device = device)
 )
 
 policy_module = TensorDictModule(
-    actor_net, in_keys=["observation"], out_keys = ["loc", "scale"]
+    actor_net, in_keys=["observation"], out_keys = ["logits"]
 )
 
 policy_module = ProbabilisticActor(
     module = policy_module,
     spec = env.action_spec,
-    in_keys = ["loc", "scale"],
-    distribution_class = TanhNormal,
-    distribution_kwargs = {
-        "low": env.action_spec_unbatched.space.low,
-        "high": env.action_spec_unbatched.space.high,
-    },
-    return_log_prob = True,
+    in_keys = ["logits"],
+    distribution_class = torch.distributions.Categorical,
+    return_log_prob = True
 )
 
 # value network
 
 value_net = nn.Sequential(
-    nn.LazyLinear(num_cells, device = device),
-    nn.Tanh(),
     nn.LazyLinear(num_cells, device = device),
     nn.Tanh(),
     nn.LazyLinear(num_cells, device = device),
