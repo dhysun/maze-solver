@@ -47,8 +47,8 @@ max_grad_norm = 1.0
 
 # data collection parameters
 
-frames_per_batch = 1000
-total_frames = 10_000
+frames_per_batch = 2000
+total_frames = 1_000_000
 
 # ppo parameters
 

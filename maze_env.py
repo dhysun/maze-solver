@@ -199,7 +199,11 @@ class MazeEnv(gym.Env):
 
 
 def parse_ascii_maze(text: str):
-    lines = [line for line in text.splitlines() if line.strip() != ""]
+    lines = []
+
+    for line in text.splitlines():
+        if line.strip() != "":
+            lines.append(line)
 
     h = len(lines)
     w = max(len(line) for line in lines)
