@@ -6,9 +6,11 @@ import os
 
 from maze_env import MazeEnv, parse_ascii_maze
 
+from collections import deque
+
 NUM_CELLS = 256
 VIEW_RADIUS = 3
-MAX_STEPS = 400
+MAX_STEPS = 300
 
 def build_actor(num_actions):
     return nn.Sequential(
@@ -73,28 +75,24 @@ def main():
     obs, _ = env.reset()
     path = [env.pos]
     solved = False
-    stall_counter = 0
-    STALL_LIMIT = 6
+
+    recent_positions = deque(maxlen = 8)
+    recent_positions.append(env.pos)
 
     with torch.no_grad():
 
         for _ in range(MAX_STEPS):
             logits = actor_net(torch.as_tensor(obs).unsqueeze(0))
-            
-            if stall_counter < STALL_LIMIT:
-                action = int(torch.argmax(logits, dim = -1).item())
-            else:
+
+            if len(recent_positions) == recent_positions.maxlen and len(set(recent_positions)) <= 3:
                 dist = torch.distributions.Categorical(logits = logits)
                 action = int(dist.sample().item())
+            else:
+                action = int(torch.argmax(logits, dim = -1).item())
             
-            prev_pos = env.pos
             obs, reward, terminated, truncated, _ = env.step(action)
             path.append(env.pos)
-
-            if env.pos != prev_pos:
-                stall_counter = 0
-            else:
-                stall_counter += 1
+            recent_positions.append(env.pos)
             
             if terminated:
                 solved = True

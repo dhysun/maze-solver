@@ -173,7 +173,7 @@ class MazeEnv(gym.Env):
 
         h, w = self.maze.shape
 
-        reward = -0.01
+        reward = -0.02
         terminated = False
         truncated = False
 
@@ -184,7 +184,7 @@ class MazeEnv(gym.Env):
         else:
             # if new pos is out of bounds or is a wall, then penalize
             # and don't update pos
-            reward -= 0.5
+            reward -= 0.2
         
         # if goal is reached, add 10 to the reward and set done to true
         if self.pos == self.goal:

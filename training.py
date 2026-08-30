@@ -48,7 +48,7 @@ max_grad_norm = 1.0
 # data collection parameters
 
 frames_per_batch = 2000
-total_frames = 1_000_000
+total_frames = 5_000_000
 
 # ppo parameters
 
@@ -57,11 +57,13 @@ num_epochs = 10
 clip_epsilon = 0.2
 gamma = 0.99
 lmbda = 0.95
+
 entropy_eps = 2e-3
+entropy_eps_final = 1e-4
 
 view_radius = 3
-min_cells, max_cells = 3, 10
-max_steps = 400
+min_cells, max_cells = 3, 8
+max_steps = 300
 
 output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "training outputs")
 checkpoint_path = os.path.join(output_dir, "maze_policy.pt")
@@ -159,7 +161,7 @@ loss_module = ClipPPOLoss(
 
 optim = torch.optim.Adam(loss_module.parameters(), lr)
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-    optim, total_frames // frames_per_batch, 0.0
+    optim, total_frames // frames_per_batch, lr * 0.1
 )
 
 # training loop
@@ -169,11 +171,12 @@ pbar = tqdm(total = total_frames)
 eval_str = ""
 
 for i, tensordict_data in enumerate(collector):
-    for _ in range(num_epochs):
-        advantage_module(tensordict_data)
-        data_view = tensordict_data.reshape(-1)
-        replay_buffer.extend(data_view.cpu())
 
+    advantage_module(tensordict_data)
+    data_view = tensordict_data.reshape(-1)
+    replay_buffer.extend(data_view.cpu())
+
+    for _ in range(num_epochs):
         for _ in range(frames_per_batch // sub_batch_size):
             subdata = replay_buffer.sample(sub_batch_size)
             loss_vals = loss_module(subdata.to(device))
@@ -201,12 +204,14 @@ for i, tensordict_data in enumerate(collector):
         base_env.min_cells, base_env.max_cells = 3, 4
     elif frac < 0.45:
         base_env.min_cells, base_env.max_cells = 3, 6
-    elif frac < 0.7:
-        base_env.min_cells, base_env.max_cells = 3, 8
     else:
         base_env.min_cells, base_env.max_cells = min_cells, max_cells
-    
+
     curriculum_str = f"maze cells: {base_env.min_cells}-{base_env.max_cells}"
+
+    current_entropy = entropy_eps * (1 - frac) + entropy_eps_final * frac
+    loss_module.entropy_coeff = current_entropy
+    entropy_str = f"entropy: {current_entropy:.5f}"
 
     if i % 5 == 0:
         with set_exploration_type(ExplorationType.DETERMINISTIC), torch.no_grad():
@@ -221,7 +226,7 @@ for i, tensordict_data in enumerate(collector):
                 f"(solved: {success})"
             )
             del eval_rollout
-    pbar.set_description(", ".join([eval_str, cum_reward_str, lr_str, curriculum_str]))
+    pbar.set_description(", ".join([eval_str, cum_reward_str, lr_str, curriculum_str, entropy_str]))
     scheduler.step()
 
 torch.save(actor_net.state_dict(), checkpoint_path)
