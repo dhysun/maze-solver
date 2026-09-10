@@ -36,11 +36,12 @@ from torchrl.envs.libs.gym import GymWrapper
 # hyperparameters
 
 is_fork = multiprocessing.get_start_method() == "fork"
-device = (
-    torch.device(0)
-    if torch.cuda.is_available() and not is_fork
-    else torch.device("cpu")
-)
+
+if torch.cuda.is_available() and not is_fork:
+    device = torch.device(0)
+else:
+    device = torch.device("cpu")
+
 num_cells = 256
 lr = 3e-4
 max_grad_norm = 1.0
