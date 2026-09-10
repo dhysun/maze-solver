@@ -10,7 +10,7 @@ from collections import deque
 
 NUM_CELLS = 256
 VIEW_RADIUS = 3
-MAX_STEPS = 300
+MAX_STEPS = 20000
 
 def build_actor(num_actions):
     return nn.Sequential(
