@@ -1,4 +1,4 @@
-Solved in 328 steps
+Solved in 7232 steps
 
 #############
 S...#...#   #
